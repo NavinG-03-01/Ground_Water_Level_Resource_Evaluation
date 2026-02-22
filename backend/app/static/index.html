@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Groundwater Monitor India</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammerjs/2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+:root {
+  --deep: #0b2d4e;
+  --mid: #1565a0;
+  --light: #2196f3;
+  --pale: #e3f2fd;
+  --accent: #00bcd4;
+  --safe: #2e7d32;
+  --safe-bg: #e8f5e9;
+  --warn: #e65100;
+  --warn-bg: #fff3e0;
+  --danger: #c62828;
+  --danger-bg: #ffebee;
+  --bg: #f0f4f8;
+  --card: #ffffff;
+  --border: #dce8f5;
+  --text: #0d1f2d;
+  --muted: #6b7f8e;
+  --radius: 18px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+header {
+  background: linear-gradient(135deg, var(--deep) 0%, #1a4a7a 100%);
+  padding: 0 36px;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  box-shadow: 0 4px 24px rgba(11,45,78,0.4);
+}
+
+.logo { display: flex; align-items: center; gap: 14px; }
+
+.logo-mark {
+  width: 42px; height: 42px;
+  background: linear-gradient(135deg, var(--accent), var(--light));
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 4px 12px rgba(0,188,212,0.4);
+}
+
+.logo-text h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px; font-weight: 600;
+  color: white; letter-spacing: 0.2px;
+}
+
+.logo-text p { font-size: 11px; color: #7eb8e8; margin-top: 1px; }
+
+.header-right { display: flex; align-items: center; gap: 20px; }
+
+.live-badge {
+  display: flex; align-items: center; gap: 7px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  padding: 6px 14px; border-radius: 20px;
+  color: #a8d8f0; font-size: 12px; font-weight: 500;
+}
+
+.pulse-dot {
+  width: 7px; height: 7px;
+  background: #4caf50; border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+
+.cgwb-tag {
+  font-size: 11px; color: #7eb8e8;
+  background: rgba(255,255,255,0.08);
+  padding: 5px 12px; border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* ── HERO ── */
+.hero {
+  background: linear-gradient(160deg, var(--deep) 0%, #1565a0 60%, #1e88e5 100%);
+  padding: 52px 36px 220px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  bottom: -2px; left: 0; right: 0;
+  height: 180px;
+  background: var(--bg);
+  clip-path: ellipse(55% 100% at 50% 100%);
+}
+
+.hero-waves {
+  position: absolute;
+  bottom: 20px; left: 0; right: 0;
+  opacity: 0.08;
+  font-size: 200px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.hero-content { max-width: 640px; margin: 0 auto; text-align: center; position: relative; z-index: 1; }
+
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 6px 16px; border-radius: 20px;
+  font-size: 12px; color: #a8d8f0; font-weight: 500;
+  margin-bottom: 20px; letter-spacing: 0.5px;
+}
+
+.hero h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 38px; font-weight: 600;
+  color: white; line-height: 1.2;
+  margin-bottom: 14px;
+}
+
+.hero p {
+  font-size: 15px; color: #a8d8f0;
+  line-height: 1.7; margin-bottom: 36px;
+}
+
+/* ── SEARCH CARD ── */
+.search-card {
+  background: white;
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 20px 60px rgba(11,45,78,0.15), 0 4px 16px rgba(11,45,78,0.08);
+  max-width: 700px;
+  margin: -140px auto 40px;
+  position: relative;
+  z-index: 10;
+  border: 1px solid var(--border);
+}
+
+.search-card h3 {
+  font-size: 16px; font-weight: 600;
+  color: var(--deep); margin-bottom: 20px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+
+.form-group label {
+  font-size: 11px; font-weight: 600;
+  color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;
+}
+
+.form-group input, .form-group select {
+  padding: 12px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px; color: var(--text);
+  background: #f8fbff;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.form-group input:focus, .form-group select:focus {
+  border-color: var(--light);
+  background: white;
+  box-shadow: 0 0 0 3px rgba(33,150,243,0.1);
+}
+
+.form-group input::placeholder { color: #b0bec5; }
+
+.coord-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.search-btn {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, var(--deep), var(--mid));
+  color: white; border: none;
+  border-radius: 14px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  letter-spacing: 0.3px;
+}
+
+.search-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(11,45,78,0.3); }
+.search-btn:active { transform: translateY(0); }
+.search-btn:disabled { background: #b0bec5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* ── MAIN ── */
+main { max-width: 860px; margin: 0 auto; padding: 0 20px 80px; }
+
+/* ── STAT STRIP ── */
+.stat-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 32px;
+}
+
+.stat-tile {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 20px 16px;
+  text-align: center;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 10px rgba(11,45,78,0.05);
+  transition: transform 0.2s;
+}
+
+.stat-tile:hover { transform: translateY(-2px); }
+.stat-emoji { font-size: 26px; margin-bottom: 8px; }
+.stat-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px; color: var(--deep);
+  line-height: 1; margin-bottom: 4px;
+}
+.stat-lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ── RESULTS ── */
+.result-section { display: none; }
+.result-section.visible { display: block; animation: fadeUp 0.4s ease; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── WELL CARD ── */
+.well-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 28px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(11,45,78,0.07);
+}
+
+.well-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  flex-wrap: wrap; gap: 12px;
+}
+
+.well-name-block h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px; font-weight: 600;
+  color: var(--deep); margin-bottom: 4px;
+}
+
+.well-meta {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px;
+}
+
+.meta-tag {
+  font-size: 12px; color: var(--muted);
+  background: var(--bg);
+  padding: 3px 10px; border-radius: 20px;
+  border: 1px solid var(--border);
+}
+
+.status-pill {
+  padding: 8px 20px; border-radius: 20px;
+  font-size: 13px; font-weight: 600;
+  white-space: nowrap;
+}
+
+.pill-safe { background: var(--safe-bg); color: var(--safe); }
+.pill-warn { background: var(--warn-bg); color: var(--warn); }
+.pill-danger { background: var(--danger-bg); color: var(--danger); }
+
+/* ── WATER HERO ── */
+.water-hero {
+  border-radius: 16px;
+  padding: 28px;
+  margin-bottom: 22px;
+  position: relative;
+  overflow: hidden;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.water-hero.safe-bg {
+  background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+  border: 1px solid #a5d6a7;
+}
+.water-hero.warn-bg {
+  background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+  border: 1px solid #ffcc80;
+}
+.water-hero.danger-bg {
+  background: linear-gradient(135deg, #ffebee, #ffcdd2);
+  border: 1px solid #ef9a9a;
+}
+
+.water-big {
+  font-family: 'Playfair Display', serif;
+  font-size: 64px; line-height: 1;
+  font-weight: 600;
+}
+
+.water-big.safe-col { color: var(--safe); }
+.water-big.warn-col { color: var(--warn); }
+.water-big.danger-col { color: var(--danger); }
+
+.water-big span { font-size: 22px; opacity: 0.7; }
+
+.water-explain { flex: 1; }
+.water-explain h4 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+.water-explain p { font-size: 14px; line-height: 1.6; opacity: 0.8; }
+
+.water-icon-bg {
+  font-size: 80px; opacity: 0.15;
+  position: absolute; right: 20px; bottom: -10px;
+  pointer-events: none;
+}
+
+/* ── PARAMS GRID ── */
+.params-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.param-box {
+  background: var(--bg);
+  border-radius: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+}
+
+.param-box label {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.7px;
+  color: var(--muted); display: block; margin-bottom: 5px;
+}
+
+.param-box .val {
+  font-size: 16px; font-weight: 600; color: var(--text);
+  display: flex; align-items: center; gap: 6px;
+}
+
+.param-box .sub {
+  font-size: 11px; color: var(--muted); margin-top: 2px;
+}
+
+/* ── FORECAST ── */
+.forecast-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 24px 28px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(11,45,78,0.07);
+}
+
+.section-title {
+  font-size: 13px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.7px;
+  color: var(--muted); margin-bottom: 18px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+.chart-wrap {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 100px;
+  padding-bottom: 24px;
+  position: relative;
+}
+
+.chart-wrap::after {
+  content: '';
+  position: absolute;
+  bottom: 24px; left: 0; right: 0;
+  height: 1px;
+  background: var(--border);
+}
+
+.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+
+.bar-fill {
+  width: 100%; border-radius: 6px 6px 0 0;
+  background: linear-gradient(180deg, var(--accent) 0%, var(--mid) 100%);
+  transition: opacity 0.2s;
+  cursor: pointer;
+  position: relative;
+}
+
+.bar-fill:hover { opacity: 0.8; }
+
+.bar-fill::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%; transform: translateX(-50%);
+  background: var(--deep);
+  color: white;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.bar-fill:hover::after { opacity: 1; }
+.bar-day { font-size: 10px; color: var(--muted); }
+
+/* ── ADVICE ── */
+.advice-card {
+  border-radius: var(--radius);
+  padding: 24px 28px;
+  margin-bottom: 20px;
+  display: flex; gap: 18px; align-items: flex-start;
+}
+
+.advice-card.safe { background: var(--safe-bg); border: 1px solid #a5d6a7; }
+.advice-card.warn { background: var(--warn-bg); border: 1px solid #ffcc80; }
+.advice-card.danger { background: var(--danger-bg); border: 1px solid #ef9a9a; }
+
+.advice-icon-big { font-size: 36px; flex-shrink: 0; }
+
+.advice-body h4 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+.advice-body p { font-size: 14px; line-height: 1.7; opacity: 0.85; }
+
+.advice-steps {
+  margin-top: 12px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+
+.advice-step {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 13px; line-height: 1.5;
+}
+
+.step-num {
+  width: 20px; height: 20px;
+  background: rgba(0,0,0,0.1);
+  border-radius: 50%;
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 1px;
+}
+
+/* ── LOCATION CARD ── */
+.location-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 24px 28px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(11,45,78,0.07);
+}
+
+.location-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.loc-item label {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.7px;
+  color: var(--muted); display: block; margin-bottom: 4px;
+}
+
+.loc-item value { font-size: 14px; font-weight: 500; color: var(--text); }
+
+/* ── LOADING / ERROR ── */
+.loader-wrap {
+  text-align: center; padding: 48px 20px; display: none;
+}
+.loader-wrap.visible { display: block; }
+
+.spinner {
+  width: 44px; height: 44px;
+  border: 3px solid var(--border);
+  border-top-color: var(--light);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loader-wrap p { color: var(--muted); font-size: 14px; }
+
+.error-banner {
+  background: #ffebee; border: 1px solid #ef9a9a;
+  border-radius: 14px; padding: 16px 20px;
+  color: var(--danger); font-size: 14px;
+  display: none; margin-bottom: 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.error-banner.visible { display: flex; }
+
+/* ── TIME SERIES CHART ── */
+.ts-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 28px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(11,45,78,0.07);
+}
+
+.ts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ts-header-left h4 {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px; font-weight: 600;
+  color: var(--deep); margin-bottom: 4px;
+}
+
+.ts-header-left p {
+  font-size: 12px; color: var(--muted);
+}
+
+.ts-controls {
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+}
+
+.ts-btn {
+  padding: 7px 14px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px; font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ts-btn:hover { border-color: var(--light); color: var(--light); background: var(--pale); }
+.ts-btn.active { background: var(--deep); color: white; border-color: var(--deep); }
+
+.ts-legend {
+  display: flex; gap: 16px; flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.legend-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--muted);
+  cursor: pointer;
+}
+
+.legend-dot {
+  width: 12px; height: 12px; border-radius: 3px;
+}
+
+.ts-chart-wrap {
+  position: relative;
+  height: 320px;
+  width: 100%;
+}
+
+.ts-hint {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 12px; flex-wrap: wrap; gap: 8px;
+}
+
+.ts-hint p {
+  font-size: 11px; color: var(--muted);
+  display: flex; align-items: center; gap: 5px;
+}
+
+.ts-zoom-btns {
+  display: flex; gap: 6px;
+}
+
+.zoom-btn {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+
+.zoom-btn:hover { border-color: var(--light); background: var(--pale); }
+
+.ts-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.ts-stat {
+  text-align: center;
+}
+
+.ts-stat .num {
+  font-size: 18px; font-weight: 700;
+  color: var(--deep); font-family: 'Playfair Display', serif;
+}
+
+.ts-stat .lbl {
+  font-size: 10px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px;
+}
+
+/* ── FOOTER ── */
+footer {
+  background: var(--deep);
+  color: #7eb8e8; font-size: 12px;
+  text-align: center; padding: 20px;
+  margin-top: 40px;
+  line-height: 1.8;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 680px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .coord-row { grid-template-columns: 1fr 1fr; }
+  .stat-strip { grid-template-columns: repeat(2, 1fr); }
+  .params-grid { grid-template-columns: repeat(2, 1fr); }
+  .location-grid { grid-template-columns: repeat(2, 1fr); }
+  .hero h2 { font-size: 28px; }
+  .hero { padding-bottom: 200px; }
+  .water-big { font-size: 48px; }
+  .search-card { padding: 22px 18px; margin: -120px 12px 30px; }
+  header { padding: 0 18px; }
+  .cgwb-tag { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-mark">💧</div>
+    <div class="logo-text">
+      <h1>Groundwater Monitor</h1>
+      <p>Central Ground Water Board · India</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge">
+      <div class="pulse-dot"></div>
+      System Active
+    </div>
+    <div class="cgwb-tag">CGWB Data</div>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-waves">〰</div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">🇮🇳 23,078 Wells Across India</div>
+    <h2>Know Your Groundwater Health</h2>
+    <p>Search any location across India to instantly see groundwater depth, seasonal trends, and a 30-day forecast — explained in simple language.</p>
+  </div>
+</div>
+
+<!-- SEARCH CARD -->
+<div class="search-card">
+  <h3>🔍 Search Your Location</h3>
+
+  <div class="form-grid">
+    <div class="form-group">
+      <label>State Name</label>
+      <input type="text" id="inp-state" placeholder="e.g. Tamil Nadu, Rajasthan" />
+    </div>
+    <div class="form-group">
+      <label>District / Station Name</label>
+      <input type="text" id="inp-search" placeholder="e.g. Chennai, Laxmipur" />
+    </div>
+  </div>
+
+  <div class="coord-row">
+    <div class="form-group">
+      <label>Latitude (optional)</label>
+      <input type="number" id="inp-lat" placeholder="e.g. 13.08" step="0.001" />
+    </div>
+    <div class="form-group">
+      <label>Longitude (optional)</label>
+      <input type="number" id="inp-lon" placeholder="e.g. 80.27" step="0.001" />
+    </div>
+    <div class="form-group">
+      <label>Forecast Days</label>
+      <select id="inp-days">
+        <option value="30">30 Days</option>
+        <option value="60">60 Days</option>
+        <option value="90">90 Days</option>
+        <option value="180">6 Months</option>
+      </select>
+    </div>
+  </div>
+
+  <button class="search-btn" onclick="doSearch()" id="search-btn">
+    <span>🔍</span> Check Groundwater Status
+  </button>
+</div>
+
+<!-- MAIN -->
+<main>
+
+  <!-- STATS -->
+  <div class="stat-strip">
+    <div class="stat-tile">
+      <div class="stat-emoji">🏔️</div>
+      <div class="stat-num" id="s-wells">23,078</div>
+      <div class="stat-lbl">Wells Monitored</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-emoji">📊</div>
+      <div class="stat-num" id="s-readings">550k</div>
+      <div class="stat-lbl">Data Readings</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-emoji">🗺️</div>
+      <div class="stat-num">28</div>
+      <div class="stat-lbl">States Covered</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-emoji">📅</div>
+      <div class="stat-num">10+</div>
+      <div class="stat-lbl">Years of Data</div>
+    </div>
+  </div>
+
+  <!-- ERROR -->
+  <div class="error-banner" id="err-box">
+    <span>⚠️</span>
+    <span id="err-msg">—</span>
+  </div>
+
+  <!-- LOADING -->
+  <div class="loader-wrap" id="loader">
+    <div class="spinner"></div>
+    <p>Analysing groundwater data for your location…</p>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="result-section" id="results">
+
+    <!-- WELL INFO -->
+    <div class="well-card">
+      <div class="well-top">
+        <div class="well-name-block">
+          <h3 id="r-name">—</h3>
+          <div class="well-meta" id="r-meta"></div>
+        </div>
+        <div class="status-pill" id="r-pill">—</div>
+      </div>
+
+      <!-- WATER LEVEL -->
+      <div class="water-hero" id="r-water-hero">
+        <div>
+          <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;opacity:0.6;margin-bottom:6px;">Current Depth to Water</p>
+          <div class="water-big" id="r-level">—<span> metres</span></div>
+          <p style="font-size:13px;margin-top:8px;opacity:0.7;" id="r-plain">—</p>
+        </div>
+        <div class="water-explain">
+          <h4 id="r-explain-title">—</h4>
+          <p id="r-explain-body">—</p>
+        </div>
+        <div class="water-icon-bg" id="r-bg-icon">💧</div>
+      </div>
+
+      <!-- PARAMETERS GRID -->
+      <div class="params-grid">
+        <div class="param-box">
+          <label>Water Trend</label>
+          <div class="val" id="r-trend">—</div>
+          <div class="sub" id="r-trend-sub">—</div>
+        </div>
+        <div class="param-box">
+          <label>Yearly Change</label>
+          <div class="val" id="r-yearly">—</div>
+          <div class="sub">metres per year</div>
+        </div>
+        <div class="param-box">
+          <label>Monsoon Recharge</label>
+          <div class="val" id="r-monsoon">—</div>
+          <div class="sub" id="r-monsoon-sub">—</div>
+        </div>
+        <div class="param-box">
+          <label>Pre-Monsoon Level</label>
+          <div class="val" id="r-pre">—</div>
+          <div class="sub">Mar – May average</div>
+        </div>
+        <div class="param-box">
+          <label>Post-Monsoon Level</label>
+          <div class="val" id="r-post">—</div>
+          <div class="sub">Oct – Nov average</div>
+        </div>
+        <div class="param-box">
+          <label>Anomalies Found</label>
+          <div class="val" id="r-anomalies">—</div>
+          <div class="sub">unusual readings</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOCATION DETAILS -->
+    <div class="location-card">
+      <div class="section-title">📍 Location Details</div>
+      <div class="location-grid">
+        <div class="loc-item">
+          <label>State</label>
+          <value id="r-state">—</value>
+        </div>
+        <div class="loc-item">
+          <label>District</label>
+          <value id="r-district">—</value>
+        </div>
+        <div class="loc-item">
+          <label>River Basin</label>
+          <value id="r-basin">—</value>
+        </div>
+        <div class="loc-item">
+          <label>Sub Basin</label>
+          <value id="r-subbasin">—</value>
+        </div>
+        <div class="loc-item">
+          <label>Latitude</label>
+          <value id="r-lat">—</value>
+        </div>
+        <div class="loc-item">
+          <label>Longitude</label>
+          <value id="r-lon">—</value>
+        </div>
+      </div>
+    </div>
+
+    <!-- FORECAST -->
+    <div class="forecast-card">
+      <div class="section-title">📈 Water Level Forecast <span id="r-forecast-days" style="font-weight:400;color:var(--light);">(30 days)</span></div>
+      <div class="chart-wrap" id="r-chart">
+        <p style="color:var(--muted);font-size:13px;">Loading forecast…</p>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px;">
+        Hover over each bar to see predicted depth. Higher bars = deeper water = less accessible.
+      </p>
+    </div>
+
+    <!-- TIME SERIES CHART -->
+    <div class="ts-card">
+      <div class="ts-header">
+        <div class="ts-header-left">
+          <h4>📊 Interactive Water Level Timeline</h4>
+          <p>Historical readings + AI forecast — hover to inspect, scroll to zoom</p>
+        </div>
+        <div class="ts-controls">
+          <button class="ts-btn active" onclick="setRange('all', this)">All Time</button>
+          <button class="ts-btn" onclick="setRange('5y',  this)">5 Years</button>
+          <button class="ts-btn" onclick="setRange('3y',  this)">3 Years</button>
+          <button class="ts-btn" onclick="setRange('1y',  this)">1 Year</button>
+        </div>
+      </div>
+
+      <div class="ts-legend">
+        <div class="legend-item" onclick="toggleDataset(0)">
+          <div class="legend-dot" style="background:#1565a0;"></div>
+          <span>Historical Readings</span>
+        </div>
+        <div class="legend-item" onclick="toggleDataset(1)">
+          <div class="legend-dot" style="background:#00bcd4;border-radius:50%;"></div>
+          <span>AI Forecast</span>
+        </div>
+        <div class="legend-item" onclick="toggleDataset(2)">
+          <div class="legend-dot" style="background:rgba(0,188,212,0.2);border:1px dashed #00bcd4;"></div>
+          <span>Confidence Band</span>
+        </div>
+      </div>
+
+      <div class="ts-chart-wrap">
+        <canvas id="tsChart"></canvas>
+      </div>
+
+      <div class="ts-hint">
+        <p>🖱️ Hover for values &nbsp;·&nbsp; 🖲️ Scroll to zoom &nbsp;·&nbsp; ✋ Drag to pan</p>
+        <div class="ts-zoom-btns">
+          <button class="zoom-btn" onclick="zoomChart('in')"  title="Zoom In">+</button>
+          <button class="zoom-btn" onclick="zoomChart('out')" title="Zoom Out">−</button>
+          <button class="zoom-btn" onclick="resetZoom()"      title="Reset">⟳</button>
+        </div>
+      </div>
+
+      <div class="ts-stats-row">
+        <div class="ts-stat">
+          <div class="num" id="ts-min">—</div>
+          <div class="lbl">Lowest Level</div>
+        </div>
+        <div class="ts-stat">
+          <div class="num" id="ts-max">—</div>
+          <div class="lbl">Highest Level</div>
+        </div>
+        <div class="ts-stat">
+          <div class="num" id="ts-avg">—</div>
+          <div class="lbl">Average Level</div>
+        </div>
+        <div class="ts-stat">
+          <div class="num" id="ts-pts">—</div>
+          <div class="lbl">Data Points</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADVICE -->
+    <div class="advice-card" id="r-advice">
+      <div class="advice-icon-big" id="r-adv-icon">💧</div>
+      <div class="advice-body">
+        <h4 id="r-adv-title">—</h4>
+        <p id="r-adv-text">—</p>
+        <div class="advice-steps" id="r-adv-steps"></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  Data Source: Central Ground Water Board (CGWB), Ministry of Jal Shakti, Government of India<br>
+  For informational purposes only · 550,850 readings from 23,078 monitoring stations across India
+</footer>
+
+<script>
+const API = 'https://urban-goggles-5gpxv5jx9qjr3455r-8000.app.github.dev';
+
+// ── Chart state ──────────────────────────────────────────────────────────────
+let tsChart      = null;
+let allHistorical = [];   // {x: Date, y: number}[]
+let allForecast   = [];   // {x: Date, y: number, lower: number, upper: number}[]
+let currentRange  = 'all';
+
+// ── Build chart ───────────────────────────────────────────────────────────────
+function buildChart(historical, forecast) {
+  allHistorical = historical;
+  allForecast   = forecast;
+
+  if (tsChart) { tsChart.destroy(); tsChart = null; }
+
+  const ctx = document.getElementById('tsChart').getContext('2d');
+
+  // Gradient for historical line
+  const gradH = ctx.createLinearGradient(0, 0, 0, 320);
+  gradH.addColorStop(0, 'rgba(21,101,160,0.3)');
+  gradH.addColorStop(1, 'rgba(21,101,160,0.02)');
+
+  // Gradient for forecast line
+  const gradF = ctx.createLinearGradient(0, 0, 0, 320);
+  gradF.addColorStop(0, 'rgba(0,188,212,0.25)');
+  gradF.addColorStop(1, 'rgba(0,188,212,0.02)');
+
+  const histData = filterByRange(historical, currentRange);
+  const fcData   = forecast.map(p => ({ x: p.x, y: p.y }));
+  const upperBand = forecast.map(p => ({ x: p.x, y: p.upper ?? p.y * 1.05 }));
+  const lowerBand = forecast.map(p => ({ x: p.x, y: p.lower ?? p.y * 0.95 }));
+
+  tsChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      datasets: [
+        {
+          label: 'Historical',
+          data: histData,
+          borderColor: '#1565a0',
+          backgroundColor: gradH,
+          borderWidth: 2,
+          pointRadius: histData.length > 100 ? 0 : 3,
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#1565a0',
+          tension: 0.35,
+          fill: true,
+          order: 3,
+        },
+        {
+          label: 'AI Forecast',
+          data: fcData,
+          borderColor: '#00bcd4',
+          backgroundColor: gradF,
+          borderWidth: 2.5,
+          borderDash: [6, 4],
+          pointRadius: fcData.length > 60 ? 0 : 4,
+          pointHoverRadius: 7,
+          pointBackgroundColor: '#00bcd4',
+          tension: 0.35,
+          fill: false,
+          order: 2,
+        },
+        {
+          label: 'Upper Bound',
+          data: upperBand,
+          borderColor: 'rgba(0,188,212,0)',
+          backgroundColor: 'rgba(0,188,212,0.12)',
+          borderWidth: 0,
+          pointRadius: 0,
+          tension: 0.35,
+          fill: '+1',
+          order: 1,
+        },
+        {
+          label: 'Lower Bound',
+          data: lowerBand,
+          borderColor: 'rgba(0,188,212,0)',
+          backgroundColor: 'rgba(0,188,212,0)',
+          borderWidth: 0,
+          pointRadius: 0,
+          tension: 0.35,
+          fill: false,
+          order: 0,
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0b2d4e',
+          titleFont: { family: 'Outfit', size: 12, weight: '600' },
+          bodyFont:  { family: 'Outfit', size: 13 },
+          padding: 12,
+          cornerRadius: 10,
+          callbacks: {
+            title: items => {
+              const d = new Date(items[0].parsed.x);
+              return d.toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+            },
+            label: item => {
+              if (item.datasetIndex === 2 || item.datasetIndex === 3) return null;
+              const tag = item.datasetIndex === 0 ? '📍 Recorded' : '🔮 Forecast';
+              return `  ${tag}: ${item.parsed.y.toFixed(2)} m below ground`;
+            },
+            afterBody: items => {
+              const fi = items.find(i => i.datasetIndex === 1);
+              if (!fi) return [];
+              const pt = allForecast.find(p => Math.abs(new Date(p.x) - new Date(fi.parsed.x)) < 86400000*2);
+              if (!pt || !pt.upper) return [];
+              return [`  📊 Range: ${pt.lower?.toFixed(2) ?? '—'} – ${pt.upper?.toFixed(2) ?? '—'} m`];
+            }
+          }
+        },
+        zoom: {
+          zoom: {
+            wheel: { enabled: true, speed: 0.08 },
+            pinch: { enabled: true },
+            mode: 'x',
+          },
+          pan: { enabled: true, mode: 'x' },
+          limits: { x: { minRange: 30 * 24 * 60 * 60 * 1000 } }
+        },
+        annotation: {
+          annotations: fcData.length > 0 ? {
+            divider: {
+              type: 'line',
+              xMin: fcData[0].x,
+              xMax: fcData[0].x,
+              borderColor: 'rgba(0,188,212,0.5)',
+              borderWidth: 1.5,
+              borderDash: [4, 4],
+              label: {
+                display: true,
+                content: 'Forecast starts',
+                position: 'start',
+                backgroundColor: 'rgba(0,188,212,0.8)',
+                font: { family: 'Outfit', size: 11 },
+                padding: { x: 8, y: 4 },
+                borderRadius: 4,
+              }
+            }
+          } : {}
+        }
+      },
+      scales: {
+        x: {
+          type: 'time',
+          time: {
+            tooltipFormat: 'dd MMM yyyy',
+            displayFormats: {
+              day:    'dd MMM',
+              week:   'dd MMM',
+              month:  'MMM yyyy',
+              year:   'yyyy',
+            }
+          },
+          grid: { color: 'rgba(220,232,245,0.7)' },
+          ticks: {
+            font: { family: 'Outfit', size: 11 },
+            color: '#8fa8bf',
+            maxTicksLimit: 10,
+          },
+          border: { display: false }
+        },
+        y: {
+          reverse: true,  // deeper = higher on scale (more alarming visually)
+          grid: { color: 'rgba(220,232,245,0.7)' },
+          ticks: {
+            font: { family: 'Outfit', size: 11 },
+            color: '#8fa8bf',
+            callback: v => v.toFixed(1) + ' m',
+          },
+          title: {
+            display: true,
+            text: 'Depth to Water (metres)',
+            font: { family: 'Outfit', size: 11 },
+            color: '#8fa8bf',
+          },
+          border: { display: false }
+        }
+      }
+    }
+  });
+
+  // Stats below chart
+  const allVals = histData.map(p => p.y).filter(v => v !== null);
+  if (allVals.length > 0) {
+    const mn  = Math.min(...allVals);
+    const mx  = Math.max(...allVals);
+    const avg = allVals.reduce((a,b) => a+b, 0) / allVals.length;
+    document.getElementById('ts-min').textContent = mn.toFixed(2)  + ' m';
+    document.getElementById('ts-max').textContent = mx.toFixed(2)  + ' m';
+    document.getElementById('ts-avg').textContent = avg.toFixed(2) + ' m';
+    document.getElementById('ts-pts').textContent = allVals.length.toLocaleString('en-IN');
+  }
+}
+
+// ── Range filter ──────────────────────────────────────────────────────────────
+function filterByRange(data, range) {
+  if (range === 'all') return data;
+  const now    = Date.now();
+  const cutoff = {
+    '5y': now - 5 * 365.25 * 86400000,
+    '3y': now - 3 * 365.25 * 86400000,
+    '1y': now - 1 * 365.25 * 86400000,
+  }[range] || 0;
+  return data.filter(p => new Date(p.x).getTime() >= cutoff);
+}
+
+function setRange(range, btn) {
+  currentRange = range;
+  document.querySelectorAll('.ts-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (!tsChart) return;
+  const filtered = filterByRange(allHistorical, range);
+  tsChart.data.datasets[0].data = filtered;
+  tsChart.update('active');
+}
+
+function toggleDataset(idx) {
+  if (!tsChart) return;
+  const meta = tsChart.getDatasetMeta(idx);
+  meta.hidden = !meta.hidden;
+  // Also toggle confidence band together with forecast
+  if (idx === 1) {
+    tsChart.getDatasetMeta(2).hidden = meta.hidden;
+    tsChart.getDatasetMeta(3).hidden = meta.hidden;
+  }
+  tsChart.update();
+}
+
+function zoomChart(dir) {
+  if (!tsChart) return;
+  dir === 'in' ? tsChart.zoom(1.3) : tsChart.zoom(0.7);
+}
+
+function resetZoom() {
+  if (!tsChart) return;
+  tsChart.resetZoom();
+}
+
+// ── Parse readings for chart ──────────────────────────────────────────────────
+async function loadChartData(wellId, forecastData) {
+  try {
+    // Fetch all readings (paginated — up to 2000)
+    let allReadings = [];
+    let page = 1;
+    while (true) {
+      const r    = await fetch(`${API}/api/v1/wells/${wellId}/readings?page=${page}&page_size=500`);
+      const data = await r.json();
+      if (!data.data || data.data.length === 0) break;
+      allReadings = allReadings.concat(data.data);
+      if (allReadings.length >= data.total || page >= 4) break;
+      page++;
+    }
+
+    // Historical points
+    const historical = allReadings
+      .filter(r => r.currentlevel !== null && r.currentlevel !== undefined)
+      .map(r => ({
+        x: new Date(r.recorded_at).getTime(),
+        y: parseFloat(r.currentlevel),
+      }))
+      .sort((a, b) => a.x - b.x);
+
+    // Forecast points
+    let forecast = [];
+    if (forecastData && forecastData.forecast && forecastData.forecast.length > 0) {
+      forecast = forecastData.forecast.map(p => ({
+        x:     new Date(p.predicted_for || p.date).getTime(),
+        y:     parseFloat(p.predicted_depth_m),
+        upper: p.upper_bound_m  ? parseFloat(p.upper_bound_m)  : null,
+        lower: p.lower_bound_m  ? parseFloat(p.lower_bound_m)  : null,
+      }));
+    }
+
+    buildChart(historical, forecast);
+  } catch(e) {
+    console.error('Chart error:', e);
+  }
+}
+
+// ── Load system stats ────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const r = await fetch(`${API}/health`);
+    const d = await r.json();
+    if (d.wells_in_db)
+      document.getElementById('s-wells').textContent = Number(d.wells_in_db).toLocaleString('en-IN');
+    if (d.readings_in_db)
+      document.getElementById('s-readings').textContent = (Number(d.readings_in_db)/1000).toFixed(0) + 'k';
+  } catch(e) {}
+}
+
+// ── Search ───────────────────────────────────────────────────────────────────
+async function doSearch() {
+  const state  = document.getElementById('inp-state').value.trim();
+  const search = document.getElementById('inp-search').value.trim();
+  const lat    = document.getElementById('inp-lat').value.trim();
+  const lon    = document.getElementById('inp-lon').value.trim();
+  const days   = parseInt(document.getElementById('inp-days').value);
+
+  const term = search || state;
+  if (!term) { showErr('Please enter at least a state name or station name.'); return; }
+
+  hideErr();
+  setLoading(true);
+  document.getElementById('results').className = 'result-section';
+  document.getElementById('search-btn').disabled = true;
+
+  try {
+    const res  = await fetch(`${API}/api/v1/wells/search?q=${encodeURIComponent(term)}&page_size=1`);
+    const data = await res.json();
+
+    if (!data.data || data.data.length === 0) {
+      showErr(`No wells found for "${term}". Try a different state, district, or station name.`);
+      setLoading(false);
+      document.getElementById('search-btn').disabled = false;
+      return;
+    }
+
+    await loadAll(data.data[0].id, days, lat, lon);
+  } catch(e) {
+    showErr('Cannot connect to server. Please make sure the server is running.');
+    setLoading(false);
+    document.getElementById('search-btn').disabled = false;
+  }
+}
+
+// ── Load all data for a well ─────────────────────────────────────────────────
+async function loadAll(wellId, days, userLat, userLon) {
+  try {
+    const [wellR, trendR, readR, forecastR] = await Promise.allSettled([
+      fetch(`${API}/api/v1/wells/${wellId}`).then(r => r.json()),
+      fetch(`${API}/api/v1/wells/${wellId}/analytics/trend`).then(r => r.json()),
+      fetch(`${API}/api/v1/wells/${wellId}/readings?page_size=1`).then(r => r.json()),
+      fetch(`${API}/api/v1/predict`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ well_id: wellId, model_type: 'arima', horizon_days: days })
+      }).then(r => r.json()),
+    ]);
+
+    const well     = wellR.status     === 'fulfilled' ? wellR.value     : {};
+    const trend    = trendR.status    === 'fulfilled' ? trendR.value    : {};
+    const readings = readR.status     === 'fulfilled' ? readR.value     : {};
+    const forecast = forecastR.status === 'fulfilled' ? forecastR.value : {};
+
+    setLoading(false);
+    document.getElementById('search-btn').disabled = false;
+    render(well, trend, readings, forecast, days, userLat, userLon);
+    // Load interactive time series chart
+    await loadChartData(wellId, forecast);
+
+  } catch(e) {
+    showErr('Error loading data. Please try again.');
+    setLoading(false);
+    document.getElementById('search-btn').disabled = false;
+  }
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render(well, trend, readings, forecast, days, userLat, userLon) {
+
+  // Current level
+  const lastRead = readings.data && readings.data[0] ? readings.data[0] : null;
+  const level    = lastRead ? parseFloat(lastRead.currentlevel) : null;
+  const status   = classifyLevel(level);
+
+  // Well header
+  setText('r-name', well.station_name || 'Unknown Station');
+  document.getElementById('r-meta').innerHTML = [
+    well.state    ? `<span class="meta-tag">📍 ${well.state}</span>` : '',
+    well.district ? `<span class="meta-tag">🏘 ${well.district}</span>` : '',
+    well.basin    ? `<span class="meta-tag">🌊 ${(well.basin||'').replace('Drainage Area Of ','').replace(' Basin','')}</span>` : '',
+    lastRead?.date ? `<span class="meta-tag">📅 Last reading: ${lastRead.date}</span>` : '',
+  ].filter(Boolean).join('');
+
+  // Status pill
+  const pill = document.getElementById('r-pill');
+  pill.textContent  = status.label;
+  pill.className    = `status-pill pill-${status.cls}`;
+
+  // Water hero
+  const hero = document.getElementById('r-water-hero');
+  hero.className = `water-hero ${status.cls}-bg`;
+
+  const levelEl = document.getElementById('r-level');
+  if (level !== null) {
+    levelEl.innerHTML = `${level.toFixed(1)}<span> metres</span>`;
+    levelEl.className = `water-big ${status.cls}-col`;
+    setText('r-plain', toPlainEnglish(level));
+    setText('r-explain-title', status.title);
+    setText('r-explain-body', status.body);
+  } else {
+    levelEl.innerHTML = `—<span> metres</span>`;
+    setText('r-plain', 'No recent measurement available');
+    setText('r-explain-title', 'Data Unavailable');
+    setText('r-explain-body', 'No recent readings found for this station.');
+  }
+  document.getElementById('r-bg-icon').textContent = status.icon;
+
+  // Trend
+  const t = trend.trend || {};
+  const slope = t.slope_m_per_year || 0;
+  const trendEl = document.getElementById('r-trend');
+  if (slope > 0.5)       { trendEl.textContent = '📉 Falling'; trendEl.style.color = 'var(--danger)'; }
+  else if (slope < -0.5) { trendEl.textContent = '📈 Rising';  trendEl.style.color = 'var(--safe)'; }
+  else                   { trendEl.textContent = '➡️ Stable';  trendEl.style.color = 'var(--mid)'; }
+  setText('r-trend-sub', t.direction || '—');
+  setText('r-yearly', slope ? (slope > 0 ? '+' : '') + slope.toFixed(2) : '—');
+
+  // Monsoon
+  const m = trend.monsoon || {};
+  setText('r-monsoon', m.recharge_status || '—');
+  setText('r-monsoon-sub', m.recharge_m ? `${m.recharge_m > 0 ? '+' : ''}${m.recharge_m.toFixed(2)}m change` : '—');
+  setText('r-pre',  m.pre_monsoon_mean_m  ? m.pre_monsoon_mean_m.toFixed(2)  + ' m' : '—');
+  setText('r-post', m.post_monsoon_mean_m ? m.post_monsoon_mean_m.toFixed(2) + ' m' : '—');
+
+  // Anomalies
+  const anomalies = trend.anomalies || [];
+  setText('r-anomalies', anomalies.length > 0 ? `⚠️ ${anomalies.length} found` : '✅ None');
+
+  // Location
+  setText('r-state',    well.state    || '—');
+  setText('r-district', well.district || '—');
+  setText('r-basin',    (well.basin   || '—').replace('Drainage Area Of ','').replace(' Basin',''));
+  setText('r-subbasin', (well.sub_basin || '—').replace('Drainage Area Of ',''));
+  setText('r-lat',      userLat || (well.latitude  ? well.latitude.toFixed(5)  : '—'));
+  setText('r-lon',      userLon || (well.longitude ? well.longitude.toFixed(5) : '—'));
+
+  // Forecast
+  document.getElementById('r-forecast-days').textContent = `(${days} days)`;
+  renderChart(forecast);
+
+  // Advice
+  renderAdvice(status, slope, m);
+
+  document.getElementById('results').className = 'result-section visible';
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Chart ─────────────────────────────────────────────────────────────────────
+function renderChart(forecast) {
+  const wrap = document.getElementById('r-chart');
+  if (!forecast || !forecast.forecast || forecast.forecast.length === 0) {
+    wrap.innerHTML = '<p style="color:var(--muted);font-size:13px;">Forecast not available — not enough historical data for this well</p>';
+    return;
+  }
+  const pts   = forecast.forecast;
+  const step  = Math.max(1, Math.floor(pts.length / 10));
+  const shown = [];
+  for (let i = 0; i < pts.length; i += step) shown.push(pts[i]);
+  shown.splice(10);
+
+  const vals  = shown.map(p => p.predicted_depth_m);
+  const maxV  = Math.max(...vals);
+  const minV  = Math.min(...vals);
+  const range = maxV - minV || 1;
+
+  wrap.innerHTML = shown.map((p, i) => {
+    const h   = 15 + ((p.predicted_depth_m - minV) / range) * 75;
+    const day = `Day ${Math.round((i + 1) * (vals.length === 1 ? 1 : (pts.length - 1) / (shown.length - 1)))}`;
+    return `
+      <div class="bar-col">
+        <div class="bar-fill" style="height:${h}%" data-tip="${day}: ${p.predicted_depth_m.toFixed(2)}m"></div>
+        <div class="bar-day">${day.replace('Day ','D')}</div>
+      </div>`;
+  }).join('');
+}
+
+// ── Advice ─────────────────────────────────────────────────────────────────────
+function renderAdvice(status, slope, monsoon) {
+  const box   = document.getElementById('r-advice');
+  box.className = `advice-card ${status.cls}`;
+  document.getElementById('r-adv-icon').textContent = status.advIcon;
+  setText('r-adv-title', status.advTitle);
+  setText('r-adv-text',  status.advText);
+
+  const steps = getSteps(status.cls, slope, monsoon);
+  document.getElementById('r-adv-steps').innerHTML = steps.map((s, i) =>
+    `<div class="advice-step"><div class="step-num">${i+1}</div><span>${s}</span></div>`
+  ).join('');
+}
+
+function getSteps(cls, slope, monsoon) {
+  if (cls === 'danger') return [
+    'Contact your local water authority or panchayat immediately',
+    'Stop all non-essential water use such as irrigation and car washing',
+    'Consider connecting to municipal water supply if available',
+    'Install rainwater harvesting to slowly recharge the aquifer',
+  ];
+  if (cls === 'warn') return [
+    'Reduce daily water usage by fixing any leaking taps or pipes',
+    'Install drip irrigation instead of flood irrigation for farming',
+    'Build a rainwater harvesting pit to replenish groundwater',
+    'Avoid digging new borewells until levels recover',
+  ];
+  if (slope > 0.5) return [
+    'Water level is fine now but falling each year — act early',
+    'Use drip irrigation and mulching to reduce agricultural water use',
+    'Encourage your community to build percolation ponds',
+    'Check and fix any leaking pipes or tanks on your property',
+  ];
+  return [
+    'Continue water conservation practices to maintain this healthy level',
+    'Support local rainwater harvesting and recharge initiatives',
+    'Avoid over-extraction especially during summer months',
+  ];
+}
+
+// ── Classifiers ───────────────────────────────────────────────────────────────
+function classifyLevel(m) {
+  if (m === null || m === undefined) return {
+    cls:'safe', label:'No Data', icon:'❓',
+    title:'No Recent Data', body:'No recent measurement available for this station.',
+    advIcon:'ℹ️', advTitle:'No Recent Data Available',
+    advText:'This station has no recent readings. Try searching a nearby district or station.'
+  };
+  if (m >= 20) return {
+    cls:'danger', label:'🔴 Critical Level', icon:'🚨',
+    title:'Water is Very Deep',
+    body:`At ${m.toFixed(1)} metres, water is extremely deep. This is like going 20 floors underground. Wells in this area may run dry soon.`,
+    advIcon:'🚨', advTitle:'Critical — Immediate Action Required',
+    advText:'Groundwater is at a dangerously low level. This area faces a serious water crisis.'
+  };
+  if (m >= 10) return {
+    cls:'warn', label:'🟡 Low Level', icon:'⚠️',
+    title:'Water Level is Below Normal',
+    body:`At ${m.toFixed(1)} metres deep, water is lower than ideal. Borewells are still functional but the situation needs attention.`,
+    advIcon:'⚠️', advTitle:'Water Level is Low — Take Precautions',
+    advText:'Groundwater is below healthy levels. Conservation measures should start now before the situation worsens.'
+  };
+  return {
+    cls:'safe', label:'🟢 Healthy Level', icon:'✅',
+    title:'Water is at a Good Level',
+    body:`At ${m.toFixed(1)} metres, groundwater is comfortably accessible. Standard borewells and pumps can easily reach this depth.`,
+    advIcon:'✅', advTitle:'Groundwater is Healthy in This Area',
+    advText:'This area has good groundwater availability. Continue conservation practices to keep it this way.'
+  };
+}
+
+function toPlainEnglish(m) {
+  if (m < 3)  return `Only ${m.toFixed(1)}m deep — very easy to access`;
+  if (m < 7)  return `${m.toFixed(1)}m deep — as deep as a 2-storey building`;
+  if (m < 15) return `${m.toFixed(1)}m deep — as deep as a 4-storey building underground`;
+  if (m < 20) return `${m.toFixed(1)}m deep — as deep as a 6-storey building underground`;
+  return `${m.toFixed(1)}m deep — as deep as a 7-storey building underground`;
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function setLoading(v) {
+  document.getElementById('loader').className = v ? 'loader-wrap visible' : 'loader-wrap';
+}
+
+function showErr(msg) {
+  const el = document.getElementById('err-box');
+  document.getElementById('err-msg').textContent = msg;
+  el.className = 'error-banner visible';
+}
+
+function hideErr() {
+  document.getElementById('err-box').className = 'error-banner';
+}
+
+// Enter key
+document.addEventListener('DOMContentLoaded', () => {
+  loadStats();
+  ['inp-state','inp-search','inp-lat','inp-lon'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') doSearch();
+    });
+  });
+});
+</script>
+</body>
+</html>
