@@ -1,8 +1,9 @@
-*.db
-.env
 .env
 *.db
 venv/
+backend/venv/
 __pycache__/
 *.pyc
-models/saved/
+*.pyo
+*.so
+*.log
