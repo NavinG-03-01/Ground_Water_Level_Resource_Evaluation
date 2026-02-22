@@ -1,0 +1,8 @@
+*.db
+.env
+.env
+*.db
+venv/
+__pycache__/
+*.pyc
+models/saved/
