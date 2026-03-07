@@ -1,6 +1,6 @@
 Command to run 
 
-1.cd /workspaces/Ground_Water_Level_Resource_Evaluation/backend
+1. cd /workspaces/Ground_Water_Level_Resource_Evaluation/backend
 
 2. source venv/bin/activate
 

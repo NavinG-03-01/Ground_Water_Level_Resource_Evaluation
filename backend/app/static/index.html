@@ -567,7 +567,7 @@ async function loadAll(wellId, days, userLat, userLon) {
       fetch(`${API}/api/v1/wells/${wellId}/readings?page_size=1`).then(r => r.json()),
       fetch(`${API}/api/v1/predict`, {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ well_id: wellId, model_type:'arima', horizon_days: days })
+        body: JSON.stringify({ well_id: wellId, model_type:'sarima', horizon_days: days })
       }).then(r => r.json()),
     ]);
 
@@ -648,7 +648,7 @@ function render(well, trend, readings, forecast, days, userLat, userLon) {
   setText('r-lat', userLat || (well.latitude  ? well.latitude.toFixed(5)  : '—'));
   setText('r-lon', userLon || (well.longitude ? well.longitude.toFixed(5) : '—'));
 
-  setText('chart-subtitle', `Historical data + AI Forecast (${forecastLabel(days)}) — hover, scroll to zoom, drag to pan`);
+  setText('chart-subtitle', `Historical data + SARIMA Forecast (${forecastLabel(days)}) — blue=actual, orange=forecast, band=confidence range`);
 
   renderAdvice(status, slope, m);
 
@@ -657,143 +657,211 @@ function render(well, trend, readings, forecast, days, userLat, userLon) {
 }
 
 // ═══════════════════════════════════════════════════════
-// FIX 2 + FIX 3 — CHART: correct axis direction + always shows forecast
+// ═══════════════════════════════════════════════════════
+// CHART: Historical + SARIMA Forecast — clean separation
 // ═══════════════════════════════════════════════════════
 async function buildTimeSeriesChart(wellId, forecastData, days) {
   try {
-    // 1. Fetch historical readings
+    // 1. Fetch ALL historical readings (paginated)
     let allReadings = [];
-    for (let page = 1; page <= 4; page++) {
+    for (let page = 1; page <= 6; page++) {
       const r = await fetch(`${API}/api/v1/wells/${wellId}/readings?page=${page}&page_size=500`);
       const d = await r.json();
       if (!d.data || d.data.length === 0) break;
       allReadings = allReadings.concat(d.data);
-      if (allReadings.length >= (d.total || 0)) break;
+      if (allReadings.length >= (d.total || 9999)) break;
     }
 
-    // 2. Build historical data points (sorted oldest → newest)
+    // 2. Build historical points — deduplicate by month, sort oldest→newest
+    const seen = new Set();
     const historical = allReadings
-      .filter(r => r.currentlevel != null)
-      .map(r => ({ x: new Date(r.recorded_at).getTime(), y: parseFloat(r.currentlevel) }))
+      .filter(r => r.currentlevel != null && !isNaN(parseFloat(r.currentlevel)))
+      .map(r => ({
+        x: new Date(r.recorded_at).getTime(),
+        y: parseFloat(parseFloat(r.currentlevel).toFixed(2))
+      }))
+      .filter(p => {
+        // Deduplicate: keep one point per month
+        const monthKey = new Date(p.x).toISOString().slice(0,7);
+        if (seen.has(monthKey)) return false;
+        seen.add(monthKey);
+        return true;
+      })
       .sort((a, b) => a.x - b.x);
 
-    // 3. Build forecast — use API response OR generate from trend if empty
-    // FIX 2: Always generate forecast going INTO THE FUTURE
+    if (historical.length === 0) {
+      console.warn('No historical data found for chart');
+      return;
+    }
+
+    const lastHistorical = historical[historical.length - 1];
+
+    // 3. Build forecast — SARIMA API response takes priority
+    //    Forecast must always start AFTER the last historical point
     let forecast = [];
 
     if (forecastData?.forecast?.length > 0) {
-      forecast = forecastData.forecast.map(p => ({
-        x:     new Date(p.predicted_for || p.date).getTime(),
-        y:     parseFloat(p.predicted_depth_m),
-        upper: p.upper_bound_m ? parseFloat(p.upper_bound_m) : null,
-        lower: p.lower_bound_m ? parseFloat(p.lower_bound_m) : null,
-      }));
+      // Use SARIMA API forecast — filter to only future dates
+      forecast = forecastData.forecast
+        .map(p => ({
+          x:     new Date(p.predicted_for || p.date).getTime(),
+          y:     parseFloat(parseFloat(p.predicted_depth_m).toFixed(2)),
+          upper: p.upper_bound_m ? parseFloat(parseFloat(p.upper_bound_m).toFixed(2)) : null,
+          lower: p.lower_bound_m ? parseFloat(parseFloat(p.lower_bound_m).toFixed(2)) : null,
+        }))
+        .filter(p => p.x > lastHistorical.x)  // strictly future only
+        .sort((a, b) => a.x - b.x);
     }
 
-    // Always generate trend-based forecast into future (adds to or replaces API forecast)
-    if (historical.length > 0) {
-      const last   = historical[historical.length - 1];
-      const first  = historical[0];
-      const spanMs = last.x - first.x;
-      // slope in metres/year
-      const slope  = spanMs > 0 ? (last.y - first.y) / (spanMs / (365.25 * 86400000)) : 0;
-      const totalMs = days * 86400000;
-      const steps   = Math.min(60, days);  // one point per day up to 60, else monthly
-      const stepMs  = totalMs / steps;
-
-      // Only generate if API gave nothing
-      if (forecast.length === 0) {
-        for (let i = 1; i <= steps; i++) {
-          const futureMs   = last.x + i * stepMs;
-          const yearsAhead = (i * stepMs) / (365.25 * 86400000);
-          const predicted  = Math.max(0.5, last.y + slope * yearsAhead);
-          forecast.push({
-            x:     futureMs,
-            y:     parseFloat(predicted.toFixed(2)),
-            upper: parseFloat((predicted * 1.1).toFixed(2)),
-            lower: parseFloat((predicted * 0.9).toFixed(2)),
-          });
-        }
-      }
+    // Fallback: if API returned nothing, generate trend+seasonal forecast
+    if (forecast.length === 0 && historical.length >= 4) {
+      forecast = generateFallbackForecast(historical, days);
     }
+
+    // 4. Bridge point — add last historical point as first forecast point
+    //    This makes the two lines connect visually without a gap
+    const bridgePoint = { x: lastHistorical.x, y: lastHistorical.y, upper: lastHistorical.y, lower: lastHistorical.y };
+    const forecastWithBridge = [bridgePoint, ...forecast];
 
     allHistorical = historical;
-    allForecast   = forecast;
+    allForecast   = forecastWithBridge;
 
-    drawChart(historical, forecast);
+    drawChart(historical, forecastWithBridge);
 
   } catch(e) {
     console.error('Chart build error:', e);
   }
 }
 
+// ── Fallback forecast: trend + monthly seasonality ─────────────────────────
+function generateFallbackForecast(historical, days) {
+  const n = historical.length;
+  // Linear regression for trend (slope in ms units → convert to m/month later)
+  let sumX=0, sumY=0, sumXY=0, sumX2=0;
+  for (let i=0; i<n; i++) { sumX+=i; sumY+=historical[i].y; sumXY+=i*historical[i].y; sumX2+=i*i; }
+  const slope     = (n*sumXY - sumX*sumY) / (n*sumX2 - sumX*sumX);
+  const intercept = (sumY - slope*sumX) / n;
+
+  // Monthly seasonal offsets from data
+  const seasonal = Array(12).fill(0), scounts = Array(12).fill(0);
+  const meanY = sumY / n;
+  historical.forEach(p => {
+    const m = new Date(p.x).getMonth();
+    seasonal[m] += (p.y - meanY);
+    scounts[m]++;
+  });
+  for (let m=0; m<12; m++) seasonal[m] = scounts[m]>0 ? seasonal[m]/scounts[m] : 0;
+
+  const nMonths  = Math.round(days / 30.44);
+  const lastDate = new Date(historical[historical.length-1].x);
+  const result   = [];
+
+  for (let i=1; i<=nMonths; i++) {
+    const futureDate = new Date(lastDate);
+    futureDate.setMonth(futureDate.getMonth() + i);
+    const trendVal  = intercept + slope * (n + i - 1);
+    const seasVal   = seasonal[futureDate.getMonth()];
+    const pred      = Math.max(0.5, Math.min(200, trendVal + seasVal));
+    // Confidence band widens over time
+    const band      = 0.08 + (i / nMonths) * 0.12;
+    result.push({
+      x:     futureDate.getTime(),
+      y:     parseFloat(pred.toFixed(2)),
+      upper: parseFloat(Math.min(200, pred*(1+band)).toFixed(2)),
+      lower: parseFloat(Math.max(0.1, pred*(1-band)).toFixed(2)),
+    });
+  }
+  return result;
+}
+
 function drawChart(historical, forecast) {
   if (tsChart) { tsChart.destroy(); tsChart = null; }
 
-  const ctx    = document.getElementById('tsChart').getContext('2d');
+  const ctx = document.getElementById('tsChart').getContext('2d');
   const histData  = filterByRange(historical, currentRange);
-  const fcData    = forecast.map(p => ({ x: p.x, y: p.y }));
-  const upperBand = forecast.map(p => ({ x: p.x, y: p.upper ?? p.y * 1.1 }));
-  const lowerBand = forecast.map(p => ({ x: p.x, y: p.lower ?? p.y * 0.9 }));
+
+  // Pure forecast line (no bridge point for upper/lower band display)
+  const fcLine    = forecast.map(p => ({ x: p.x, y: p.y }));
+  const upperBand = forecast.map(p => ({ x: p.x, y: p.upper ?? parseFloat((p.y*1.1).toFixed(2)) }));
+  const lowerBand = forecast.map(p => ({ x: p.x, y: p.lower ?? parseFloat((p.y*0.9).toFixed(2)) }));
 
   // Gradients
   const gH = ctx.createLinearGradient(0,0,0,340);
-  gH.addColorStop(0,'rgba(21,101,160,0.25)');
-  gH.addColorStop(1,'rgba(21,101,160,0.02)');
+  gH.addColorStop(0,'rgba(21,101,160,0.22)');
+  gH.addColorStop(1,'rgba(21,101,160,0.01)');
+
+  const gFC = ctx.createLinearGradient(0,0,0,340);
+  gFC.addColorStop(0,'rgba(255,109,0,0.18)');
+  gFC.addColorStop(1,'rgba(255,109,0,0.01)');
 
   tsChart = new Chart(ctx, {
     type: 'line',
     data: {
       datasets: [
+        // Dataset 0 — Historical (solid blue)
         {
-          label: 'Historical',
+          label: '📍 Historical Data',
           data: histData,
           borderColor: '#1565a0',
           backgroundColor: gH,
           borderWidth: 2,
-          pointRadius: histData.length > 80 ? 0 : 3,
+          pointRadius: histData.length > 60 ? 0 : 3,
           pointHoverRadius: 6,
-          tension: 0.3,
+          pointBackgroundColor: '#1565a0',
+          tension: 0.25,
           fill: true,
+          order: 4,
+        },
+        // Dataset 1 — SARIMA forecast line (dashed orange)
+        {
+          label: '🔮 SARIMA Forecast',
+          data: fcLine,
+          borderColor: '#e65100',
+          backgroundColor: 'transparent',
+          borderWidth: 2.5,
+          borderDash: [8, 5],
+          pointRadius: fcLine.length > 40 ? 0 : 3,
+          pointHoverRadius: 7,
+          pointBackgroundColor: '#e65100',
+          tension: 0.25,
+          fill: false,
           order: 3,
         },
-        {
-          // FIX 2: AI Forecast in orange so it stands out clearly
-          label: '🔮 AI Forecast',
-          data: fcData,
-          borderColor: '#ff6d00',
-          backgroundColor: 'rgba(255,109,0,0.08)',
-          borderWidth: 2.5,
-          borderDash: [7, 4],
-          pointRadius: fcData.length > 80 ? 0 : 4,
-          pointHoverRadius: 7,
-          pointBackgroundColor: '#ff6d00',
-          tension: 0.3,
-          fill: false,
-          order: 2,
-        },
+        // Dataset 2 — Upper confidence band (filled orange-tint)
         {
           label: 'Upper Bound',
           data: upperBand,
-          borderColor: 'rgba(255,109,0,0)',
-          backgroundColor: 'rgba(255,109,0,0.1)',
-          borderWidth: 0,
+          borderColor: 'rgba(230,81,0,0.3)',
+          backgroundColor: 'rgba(255,109,0,0.10)',
+          borderWidth: 1,
+          borderDash: [3,4],
           pointRadius: 0,
-          tension: 0.3,
-          fill: '+1',
-          order: 1,
+          tension: 0.25,
+          fill: '+1',   // fill between this and dataset 3 (lower)
+          order: 2,
         },
+        // Dataset 3 — Lower confidence band
         {
           label: 'Lower Bound',
           data: lowerBand,
-          borderColor: 'rgba(255,109,0,0)',
+          borderColor: 'rgba(230,81,0,0.3)',
           backgroundColor: 'rgba(0,0,0,0)',
-          borderWidth: 0,
+          borderWidth: 1,
+          borderDash: [3,4],
           pointRadius: 0,
-          tension: 0.3,
+          tension: 0.25,
+          fill: false,
+          order: 1,
+        },
+        // Dataset 4 — Vertical divider at "today" / last historical point
+        {
+          label: 'Now',
+          data: [], // drawn via annotation plugin not available — skip
+          borderColor: 'transparent',
+          pointRadius: 0,
           fill: false,
           order: 0,
-        },
+        }
       ]
     },
     options: {
@@ -801,33 +869,52 @@ function drawChart(historical, forecast) {
       maintainAspectRatio: false,
       interaction: { mode:'index', intersect:false },
       plugins: {
-        legend: { display: false },
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            font: { family:'Outfit', size:12 },
+            color: '#0b2d4e',
+            usePointStyle: true,
+            pointStyleWidth: 16,
+            filter: item => item.datasetIndex <= 1,  // only show Historical + Forecast
+            generateLabels: chart => [
+              { text:'📍 Historical Data',   fillStyle:'#1565a0', strokeStyle:'#1565a0', lineWidth:2, pointStyle:'line', datasetIndex:0 },
+              { text:'🔮 SARIMA Forecast',   fillStyle:'#e65100', strokeStyle:'#e65100', lineWidth:2, pointStyle:'line', lineDash:[8,5], datasetIndex:1 },
+              { text:'Confidence Band',       fillStyle:'rgba(255,109,0,0.15)', strokeStyle:'rgba(230,81,0,0.3)', lineWidth:1, pointStyle:'rect', datasetIndex:2 },
+            ]
+          }
+        },
         tooltip: {
           backgroundColor: '#0b2d4e',
           titleFont: { family:'Outfit', size:12, weight:'600' },
           bodyFont:  { family:'Outfit', size:13 },
-          padding: 12,
-          cornerRadius: 10,
+          padding: 14,
+          cornerRadius: 12,
           callbacks: {
             title: items => new Date(items[0].parsed.x).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}),
             label: item => {
-              if (item.datasetIndex >= 2) return null;
-              const tag = item.datasetIndex === 0 ? '📍 Recorded' : '🔮 AI Forecast';
-              return `  ${tag}: ${item.parsed.y.toFixed(2)} m below ground`;
+              if (item.datasetIndex === 0) return `  📍 Recorded:  ${item.parsed.y.toFixed(2)} m`;
+              if (item.datasetIndex === 1) return `  🔮 Forecast:  ${item.parsed.y.toFixed(2)} m`;
+              return null;
             },
             afterBody: items => {
               const fi = items.find(i => i.datasetIndex === 1);
               if (!fi) return [];
-              const pt = allForecast.find(p => Math.abs(p.x - fi.parsed.x) < 86400000*3);
-              if (!pt?.upper) return [];
-              return [`  📊 Range: ${pt.lower?.toFixed(2)} – ${pt.upper?.toFixed(2)} m`];
+              const pt = allForecast.find(p => Math.abs(p.x - fi.parsed.x) < 86400000*16);
+              if (!pt?.upper || !pt?.lower) return [];
+              return [
+                ``,
+                `  📊 Confidence Range:`,
+                `  Low  ${pt.lower.toFixed(2)} m  →  High  ${pt.upper.toFixed(2)} m`,
+              ];
             }
           }
         },
         zoom: {
           zoom: { wheel:{enabled:true,speed:0.08}, pinch:{enabled:true}, mode:'x' },
           pan:  { enabled:true, mode:'x' },
-          limits: { x:{ minRange: 30*24*60*60*1000 } }
+          limits: { x:{ minRange: 60*24*60*60*1000 } }
         }
       },
       scales: {
@@ -835,38 +922,39 @@ function drawChart(historical, forecast) {
           type: 'time',
           time: {
             tooltipFormat: 'dd MMM yyyy',
-            displayFormats: { day:'dd MMM', week:'dd MMM', month:'MMM yyyy', year:'yyyy' }
+            displayFormats: { month:'MMM yyyy', year:'yyyy', quarter:'MMM yyyy' }
           },
-          grid: { color:'rgba(220,232,245,0.7)' },
+          grid: { color:'rgba(220,232,245,0.6)' },
           ticks: { font:{family:'Outfit',size:11}, color:'#8fa8bf', maxTicksLimit:10 },
           border: { display:false }
         },
         y: {
-          // FIX 3: reverse:false — smaller depth (near surface) at BOTTOM,
-          //         larger depth at TOP  ← WAIT, user wants:
-          //         "smaller depth to larger" = left-to-right is time axis
-          //         "not larger depth to smaller" = currently larger is at top
-          //         So: smaller depth should be at bottom of y-axis (natural)
-          //         reverse: false means 0 at bottom, 30 at top — that's WRONG for depth
-          //         depth=0 means surface (good), depth=30 means very deep (bad)
-          //         User wants smaller depth (shallower = good) plotted LOWER on chart
-          //         = reverse:false = natural = 0 at bottom, 30 at top ← THIS IS CORRECT
+          // Depth increases downward in real life
+          // reverse:true  → 0 at top, 30 at bottom  (matches "going deeper")
+          // reverse:false → 0 at bottom, 30 at top  (higher value = higher on chart)
+          // For groundwater: larger depth = worse = should be visually HIGHER (alarming)
+          // So reverse:false is correct — when water depletes, line goes UP (alarming visual)
           reverse: false,
-          grid: { color:'rgba(220,232,245,0.7)' },
+          grid: { color:'rgba(220,232,245,0.6)' },
           ticks: {
             font:{family:'Outfit',size:11},
             color:'#8fa8bf',
             callback: v => v.toFixed(1)+' m'
           },
-          title: { display:true, text:'Depth to Water (m) — smaller = shallower = better', font:{family:'Outfit',size:11}, color:'#8fa8bf' },
+          title: {
+            display: true,
+            text: 'Depth to Water Table (metres below ground)',
+            font:{family:'Outfit', size:11},
+            color:'#6b7f8e'
+          },
           border: { display:false }
         }
       }
     }
   });
 
-  // Stats
-  const vals = histData.map(p=>p.y);
+  // Stats — use ALL historical (not filtered by range)
+  const vals = historical.map(p=>p.y);
   if (vals.length > 0) {
     const mn = Math.min(...vals), mx = Math.max(...vals);
     const av = vals.reduce((a,b)=>a+b,0)/vals.length;

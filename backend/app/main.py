@@ -35,7 +35,7 @@ from app.preprocessing import (
     summarise_by_group,
 )
 from app.prediction import (
-    ARIMAForecaster, LSTMForecaster, ensemble_forecast, build_forecast_response,
+    SARIMAForecaster, LSTMForecaster, ensemble_forecast, build_forecast_response,
 )
 from app.analytics import (
     compute_linear_trend, seasonal_decomposition,
@@ -430,7 +430,7 @@ async def predict(payload: ForecastRequest, db: AsyncSession = Depends(get_db)):
 
     try:
         if model_type == "arima":
-            fc = ARIMAForecaster(settings.ARIMA_ORDER)
+            fc = SARIMAForecaster()
             fc.fit(series)
             preds, lower, upper = fc.predict(horizon)
             return build_forecast_response(payload.well_id, "arima", start_date, preds, lower, upper)
@@ -444,7 +444,7 @@ async def predict(payload: ForecastRequest, db: AsyncSession = Depends(get_db)):
             return build_forecast_response(payload.well_id, "lstm", start_date, preds)
 
         elif model_type == "ensemble":
-            arima = ARIMAForecaster(settings.ARIMA_ORDER).fit(series)
+            arima = SARIMAForecaster().fit(series)
             arima_preds, lower, upper = arima.predict(horizon)
             lstm  = LSTMForecaster(settings.LSTM_SEQ_LENGTH, settings.LSTM_EPOCHS, settings.LSTM_BATCH_SIZE)
             lstm.fit(X_train, y_train)
